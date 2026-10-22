@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DC Office Dukki - NCP Vehicle Registration & Digital QR Tracking System</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- QR Code Generator -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- html5-qrcode scanner -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <!-- Google Font Inter & Noto Nastaliq Urdu / Noto Sans -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        govNavy: '#0c1b33',
+                        govGreen: '#0f5132',
+                        govGold: '#d4af37',
+                        govGoldHover: '#b89628',
+                        govBg: '#f4f6f9',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        urdu: ['Noto Nastaliq Urdu', 'serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .print-only { display: none !important; }
+        @media print {
+            body * { visibility: hidden; }
+            #printablePermitCard, #printablePermitCard * { visibility: visible; }
+            #printablePermitCard {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                display: block !important;
+            }
+            .no-print { display: none !important; }
+        }
+        /* Glassmorphism effects */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+    </style>
+</head>
+<body class="bg-govBg min-h-screen flex flex-col font-sans text-gray-800 antialiased selection:bg-govGold selection:text-govNavy">
+
+    <!-- Header / Navigation Bar -->
+    <header class="bg-govNavy text-white shadow-xl border-b-4 border-govGold sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-3">
+                <!-- Branding -->
+                <div class="flex items-center space-x-3 space-x-reverse">
+                    <div class="w-12 h-12 rounded-full bg-white/10 border-2 border-govGold flex items-center justify-center p-1 shadow-inner">
+                        <i class="fa-solid font-bold fa-shield-halved text-2xl text-govGold"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-white">DC OFFICE DUKKI</h1>
+                            <span class="bg-govGold text-govNavy font-extrabold text-xs px-2 py-0.5 rounded shadow-sm">NCP PORTAL</span>
+                        </div>
+                        <p class="text-xs text-emerald-300 flex items-center gap-1">
+                            <span>ضلعی انتظامیہ دکی - نان کسٹم پیڈ گاڑیوں کا عارضی رجسٹریشن سسٹم</span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Live Clock & Status -->
+                <div class="flex items-center gap-4 text-xs sm:text-sm">
+                    <div class="hidden sm:flex flex-col items-end text-gray-300">
+                        <span id="currentDate" class="font-medium text-govGold"></span>
+                        <span id="currentTime" class="font-mono text-gray-400"></span>
+                    </div>
+                    <div class="bg-emerald-900/60 border border-emerald-500/40 text-emerald-300 text-xs px-3 py-1.5 rounded-full flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                        <span class="font-semibold">System Active</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Navigation Bar -->
+            <nav class="mt-4 flex flex-wrap gap-2 border-t border-white/10 pt-2 text-sm font-medium">
+                <button onclick="switchTab('register')" id="tab-register" class="nav-btn flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 bg-govGold text-govNavy font-bold shadow">
+                    <i class="fa-solid fa-file-pen"></i>
+                    <span>Registration Form <span class="text-xs text-govNavy/70 font-urdu">(رجسٹریشن فارم)</span></span>
+                </button>
+                <button onclick="switchTab('database')" id="tab-database" class="nav-btn flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 text-gray-300 hover:text-white hover:bg-white/10">
+                    <i class="fa-solid fa-database"></i>
+                    <span>Vehicle Database <span class="text-xs text-gray-400 font-urdu">(ریکارڈ ڈیٹا بیس)</span></span>
+                    <span id="recordCountBadge" class="ml-1 bg-govGold text-govNavy font-bold text-xs px-2 py-0.5 rounded-full">0</span>
+                </button>
+                <button onclick="switchTab('scanner')" id="tab-scanner" class="nav-btn flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 text-gray-300 hover:text-white hover:bg-white/10">
+                    <i class="fa-solid fa-qrcode text-govGold"></i>
+                    <span class="text-emerald-300 font-semibold">Officer QR Verification Mode</span>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- TAB 1: REGISTRATION FORM -->
+        <section id="view-register" class="tab-view space-y-6">
+            <div class="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden">
+                <!-- Header Banner -->
+                <div class="bg-gradient-to-r from-govNavy to-slate-800 p-6 text-white border-b-2 border-govGold flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold flex items-center gap-2">
+                            <i class="fa-solid fa-car-side text-govGold"></i>
+                            New NCP Vehicle Registration Form
+                        </h2>
+                        <p class="text-sm text-gray-300 mt-1">Enter complete owner and vehicle specifications to issue official temporary DC number tag.</p>
+                    </div>
+                    <div class="bg-white/10 text-right p-3 rounded-lg border border-white/10 text-xs">
+                        <span class="text-govGold font-bold">Auto-Generated Reg Series:</span>
+                        <div id="nextRegPreview" class="text-lg font-mono font-bold text-emerald-300">DC-DKI-TEMP-2026-001</div>
+                    </div>
+                </div>
+
+                <!-- Registration Form -->
+                <form id="ncpRegistrationForm" onsubmit="handleRegistration(event)" class="p-6 space-y-6">
+                    <!-- Owner Section -->
+                    <div class="border-b border-gray-200 pb-6">
+                        <h3 class="text-base font-bold text-govNavy flex items-center gap-2 mb-4">
+                            <i class="fa-solid fa-user-shield text-govGreen"></i>
+                            1. Owner Information (مالک کی تفصیلات)
+                        </h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">Owner Name * / نام</label>
+                                <input type="text" id="ownerName" required placeholder="e.g. Muhammad Gul" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-govNavy focus:border-transparent outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">Father Name * / ولدیت</label>
+                                <input type="text" id="fatherName" required placeholder="e.g. Abdul Rahim" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-govNavy focus:border-transparent outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">CNIC Number * / شناختی کارڈ</label>
+                                <input type="text" id="cnicNumber" required placeholder="54101-XXXXXXX-X" pattern="^\d{5}-\d{7}-\d{1}$" title="Format: 54101-1234567-1" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-govNavy focus:border-transparent outline-none">
+                                <span class="text-[10px] text-gray-500">Format: 54101-1234567-1</span>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">Mobile Number * / موبائل نمبر</label>
+                                <input type="tel" id="mobileNumber" required placeholder="03XX-XXXXXXX" pattern="^03\d{2}-\d{7}$" title="Format: 0300-1234567" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-govNavy focus:border-transparent outline-none">
+                            </div>
+                            <div class="sm:col-span-2 lg:col-span-4">
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">Dukki Local Address * / پتہ (ضلع دکی)</label>
+                                <input type="text" id="dukkiAddress" required placeholder="Tehsil / Union Council / Village address in Dukki" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-govNavy focus:border-transparent outline-none">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Vehicle Specification Section -->
+                    <div class="border-b border-gray-200 pb-6">
+                        <h3 class="text-base font-bold text-govNavy flex items-center gap-2 mb-4">
+                            <i class="fa-solid fa-truck-pickup text-govGreen"></i>
+                            2. Vehicle Specifications (گاڑی کی تفصیلات)
+                        </h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">Vehicle Make / Model * / ماڈل</label>
+                                <input type="text" id="vehicleModel" required placeholder="e.g. Toyota Vitz / Hilux Surf" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-govNavy focus:border-transparent outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">Chassis / VIN Number (Mandatory Key) *</label>
+                                <input type="text" id="chassisNumber" required placeholder="e.g. KSP90-1234567" class="w-full px-3 py-2 font-mono uppercase text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-govNavy focus:border-transparent outline-none">
+                                <span class="text-[10px] text-amber-700 font-semibold">Primary identification key for NCP vehicle</span>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">Engine Number * / انجن نمبر</label>
+                                <input type="text" id="engineNumber" required placeholder="e.g. 1KR-FE-8921" class="w-full px-3 py-2 font-mono uppercase text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-govNavy focus:border-transparent outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">Vehicle Color * / رنگ</label>
+                                <input type="text" id="vehicleColor" required placeholder="e.g. Pearl White / Silver" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-govNavy focus:border-transparent outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">Vehicle Type / باڈی کی قسم</label>
+                                <select id="vehicleType" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-govNavy focus:border-transparent outline-none bg-white">
+                                    <option value="Single Cabin / Pickup">Single Cabin / Pickup (سنگل ڈبل کیبن)</option>
+                                    <option value="Sedan Car">Sedan Car (کار)</option>
+                                    <option value="Hatchback">Hatchback (ہیچ بیک)</option>
+                                    <option value="SUV / 4x4 Jeep">SUV / 4x4 Jeep (جیپ)</option>
+                                    <option value="Dumper / Truck">Dumper / Commercial Truck (ڈمپر / ٹرک)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">Registration Validity * / معیاد</label>
+                                <select id="validityMonths" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-govNavy focus:border-transparent outline-none bg-white">
+                                    <option value="6">6 Months (Temporary Pass)</option>
+                                    <option value="12" selected>1 Year (Standard Extension)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex items-center justify-end gap-3 pt-2">
+                        <button type="button" onclick="resetForm()" class="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 font-medium text-sm transition">
+                            <i class="fa-solid fa-rotate-left mr-1"></i> Reset Form
+                        </button>
+                        <button type="submit" class="px-7 py-2.5 rounded-lg bg-govNavy text-white hover:bg-slate-800 font-bold text-sm shadow-md transition flex items-center gap-2 border-b-2 border-govGold">
+                            <i class="fa-solid fa-file-circle-check text-govGold"></i>
+                            Complete Registration & Issue Tag
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- TAB 2: REGISTERED DATABASE -->
+        <section id="view-database" class="tab-view space-y-6 hidden">
+            <!-- Search & Actions Bar -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex flex-col md:flex-row items-center justify-between gap-4">
+                <!-- Search Inputs -->
+                <div class="relative w-full md:w-96">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" id="dbSearchInput" onkeyup="renderDatabaseTable()" placeholder="Search CNIC, Temp Reg #, Owner, Chassis..." class="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-govNavy focus:border-transparent outline-none">
+                </div>
+
+                <!-- Filters & Export -->
+                <div class="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+                    <select id="dbStatusFilter" onchange="renderDatabaseTable()" class="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white outline-none">
+                        <option value="ALL">All Statuses</option>
+                        <option value="ACTIVE">Active Passes</option>
+                        <option value="FLAGGED">Flagged / Violations</option>
+                        <option value="EXPIRED">Expired</option>
+                    </select>
+
+                    <button onclick="exportToCSV()" class="px-4 py-2 bg-govGreen text-white text-sm font-semibold rounded-lg hover:bg-emerald-800 transition flex items-center gap-2 shadow-sm">
+                        <i class="fa-solid fa-file-csv"></i> Export CSV
+                    </button>
+                    <button onclick="exportToJSON()" class="px-4 py-2 bg-slate-700 text-white text-sm font-semibold rounded-lg hover:bg-slate-800 transition flex items-center gap-2 shadow-sm">
+                        <i class="fa-solid fa-file-code"></i> JSON Backup
+                    </button>
+                </div>
+            </div>
+
+            <!-- Database Table -->
+            <div class="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm border-collapse">
+                        <thead class="bg-govNavy text-white text-xs uppercase tracking-wider border-b border-govGold">
+                            <tr>
+                                <th class="p-3">Temp Reg #</th>
+                                <th class="p-3">Owner Details</th>
+                                <th class="p-3">CNIC & Contact</th>
+                                <th class="p-3">Vehicle Info</th>
+                                <th class="p-3">Chassis / Engine</th>
+                                <th class="p-3">Validity</th>
+                                <th class="p-3">Status</th>
+                                <th class="p-3 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="databaseTableBody" class="divide-y divide-gray-200 text-gray-700">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="noRecordsFound" class="hidden p-8 text-center text-gray-500">
+                    <i class="fa-solid fa-folder-open text-4xl mb-2 text-gray-300"></i>
+                    <p>No registered NCP vehicle records found matching query.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: ROADSIDE QR VERIFICATION & SCANNER MODE -->
+        <section id="view-scanner" class="tab-view space-y-6 hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                <!-- Left Column: Checkpoint Verification Scanner Panel -->
+                <div class="lg:col-span-5 space-y-4">
+                    <div class="bg-govNavy rounded-2xl p-6 text-white shadow-lg border-2 border-govGold">
+                        <div class="flex items-center justify-between mb-4 border-b border-white/10 pb-3">
+                            <div>
+                                <h3 class="text-lg font-bold flex items-center gap-2 text-govGold">
+                                    <i class="fa-solid fa-shield-halved"></i>
+                                    Roadside Verification Portal
+                                </h3>
+                                <p class="text-xs text-gray-300">DC Office Checkpoint Officer Console</p>
+                            </div>
+                            <span class="bg-emerald-500/20 text-emerald-300 text-xs px-2.5 py-1 rounded-full border border-emerald-500/40">Live Check</span>
+                        </div>
+
+                        <!-- Scan Options -->
+                        <div class="space-y-4">
+                            <!-- Quick Manual Input -->
+                            <div>
+                                <label class="block text-xs text-gray-300 mb-1 font-semibold">Enter Temp Reg # or Chassis Number:</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="quickVerifyInput" placeholder="e.g. DC-DKI-TEMP-2026-001" class="w-full px-3 py-2 text-sm text-gray-900 rounded-lg outline-none font-mono uppercase font-bold focus:ring-2 focus:ring-govGold">
+                                    <button onclick="performQuickLookup()" class="px-4 py-2 bg-govGold text-govNavy font-bold rounded-lg hover:bg-govGoldHover transition text-sm flex items-center gap-1 shrink-0">
+                                        <i class="fa-solid fa-magnifying-glass"></i> Check
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="relative flex py-1 items-center">
+                                <div class="flex-grow border-t border-gray-600"></div>
+                                <span class="flex-shrink mx-2 text-xs text-gray-400">OR SCAN CAMERA / SAMPLE QR</span>
+                                <div class="flex-grow border-t border-gray-600"></div>
+                            </div>
+
+                            <!-- Interactive Camera QR Reader Box -->
+                            <div class="bg-black/50 border border-dashed border-gray-500 rounded-xl p-4 text-center">
+                                <div id="qrReader" class="w-full rounded-lg overflow-hidden min-h-[180px] bg-black flex flex-col items-center justify-center">
+                                    <p id="cameraPlaceholderText" class="text-xs text-gray-400 p-4">Camera feed or simulation ready.<br>Click below to toggle camera or test quick scan.</p>
+                                </div>
+                                <div class="mt-3 flex gap-2 justify-center">
+                                    <button onclick="toggleCameraScanner()" id="cameraToggleBtn" class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold rounded-lg transition flex items-center gap-1">
+                                        <i class="fa-solid fa-camera"></i> <span id="cameraBtnLabel">Start Camera Scan</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Fast Test Pickers -->
+                            <div class="bg-white/5 p-3 rounded-lg border border-white/10">
+                                <label class="block text-[11px] text-gray-300 mb-1">Quick Select Demo Registered Vehicle:</label>
+                                <select id="demoVehiclePicker" onchange="lookupBySelect(this.value)" class="w-full px-2 py-1.5 text-xs bg-slate-800 text-white rounded border border-slate-600 outline-none">
+                                    <option value="">-- Choose registered test vehicle --</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Instant Result Card -->
+                <div class="lg:col-span-7">
+                    <div id="verificationResultCard" class="bg-white rounded-2xl shadow-md border border-gray-200 p-6 min-h-[420px] flex flex-col justify-between">
+                        <!-- Default Idle State -->
+                        <div id="idleState" class="h-full flex flex-col items-center justify-center text-center p-8 text-gray-400 my-auto">
+                            <i class="fa-solid fa-qrcode text-6xl text-gray-300 mb-3 animate-pulse"></i>
+                            <h4 class="text-lg font-bold text-gray-600">Awaiting QR Scan / Search Input</h4>
+                            <p class="text-xs max-w-sm text-gray-400 mt-1">Scan vehicle QR permit sticker using camera or enter registration/chassis number to display real-time authenticity status.</p>
+                        </div>
+
+                        <!-- Active Result State (Hidden by default) -->
+                        <div id="resultState" class="hidden space-y-6">
+                            <!-- Status Banner -->
+                            <div id="statusBanner" class="p-4 rounded-xl flex items-center justify-between text-white shadow">
+                                <div class="flex items-center gap-3">
+                                    <div id="statusIcon" class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
+                                        <!-- Dynamic Icon -->
+                                    </div>
+                                    <div>
+                                        <span class="text-xs uppercase tracking-widest text-white/80 font-bold">Verification Result</span>
+                                        <h3 id="statusTitle" class="text-xl font-extrabold">STATUS: VALID</h3>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <span id="statusBadgeText" class="px-3 py-1 bg-white/20 rounded-full text-xs font-bold uppercase">Active Pass</span>
+                                </div>
+                            </div>
+
+                            <!-- Vehicle & Owner Info Grid -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                <div>
+                                    <span class="text-xs text-gray-500 block">Temp Registration #</span>
+                                    <span id="resTempReg" class="font-mono font-bold text-govNavy text-base"></span>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-gray-500 block">Chassis Number (VIN)</span>
+                                    <span id="resChassis" class="font-mono font-bold text-gray-800"></span>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-gray-500 block">Registered Owner</span>
+                                    <span id="resOwner" class="font-bold text-gray-800"></span>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-gray-500 block">CNIC Number</span>
+                                    <span id="resCnic" class="font-mono text-gray-800"></span>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-gray-500 block">Vehicle Model & Color</span>
+                                    <span id="resModel" class="font-medium text-gray-800"></span>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-gray-500 block">Engine Number</span>
+                                    <span id="resEngine" class="font-mono text-gray-800"></span>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-gray-500 block">Dukki Address</span>
+                                    <span id="resAddress" class="text-xs text-gray-800"></span>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-gray-500 block">Permit Expiry Date</span>
+                                    <span id="resExpiry" class="font-semibold text-gray-800"></span>
+                                </div>
+                            </div>
+
+                            <!-- Roadside Officer Quick Actions -->
+                            <div class="border-t border-gray-200 pt-4 flex flex-wrap gap-2 justify-between items-center">
+                                <div class="text-xs text-gray-500">
+                                    Officer Action Protocol: DC Office Security Desk
+                                </div>
+                                <div class="flex gap-2">
+                                    <button onclick="toggleRecordFlag()" id="flagToggleBtn" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg transition flex items-center gap-1 shadow">
+                                        <i class="fa-solid fa-triangle-exclamation"></i> Mark Violation / Flag
+                                    </button>
+                                    <button onclick="openPermitModalCurrent()" class="px-4 py-2 bg-govNavy hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition flex items-center gap-1 shadow">
+                                        <i class="fa-solid fa-id-card"></i> View Full Pass Card
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-govNavy text-white border-t-2 border-govGold py-6 mt-12 no-print">
+        <div class="max-w-7xl mx-auto px-4 text-center sm:flex sm:justify-between sm:items-center text-xs text-gray-400 space-y-2 sm:space-y-0">
+            <div>
+                <p class="font-bold text-gray-200">OFFICE OF THE DEPUTY COMMISSIONER, DISTRICT DUKKI</p>
+                <p class="font-urdu text-[11px] text-govGold">محکمہ داخلہ و قبائلی امور / ضلعی انتظامیہ دکی</p>
+            </div>
+            <div>
+                <p>NCP Vehicle Temporary Registration & Digital Tracking Module v2.4</p>
+                <p class="text-emerald-400">Secure QR Verification System</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- MODAL: PERMIT / PASS CARD VIEW (PRINT READY) -->
+    <div id="permitModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-xl w-full shadow-2xl border-4 border-govNavy overflow-hidden my-8">
+            <!-- Modal Actions Toolbar -->
+            <div class="bg-gray-100 px-4 py-3 border-b flex justify-between items-center no-print">
+                <span class="text-xs font-bold text-govNavy uppercase">Official NCP Temporary Permit Tag</span>
+                <div class="flex gap-2">
+                    <button onclick="window.print()" class="px-3 py-1.5 bg-govGreen text-white text-xs font-bold rounded hover:bg-emerald-800 flex items-center gap-1 shadow">
+                        <i class="fa-solid fa-print"></i> Print Tag Card
+                    </button>
+                    <button onclick="closePermitModal()" class="px-3 py-1.5 bg-gray-300 text-gray-700 text-xs font-bold rounded hover:bg-gray-400">
+                        Close
+                    </button>
+                </div>
+            </div>
+
+            <!-- CARD CONTENT (Design matches government issued permit) -->
+            <div id="printablePermitCard" class="p-6 bg-gradient-to-b from-slate-50 to-emerald-50/20 relative">
+                <!-- Background Watermark -->
+                <div class="absolute inset-0 flex items-center justify-center opacity-[0.04] pointer-events-none">
+                    <i class="fa-solid fa-shield-halved text-[280px] text-govNavy"></i>
+                </div>
+
+                <!-- Header Badge -->
+                <div class="border-b-2 border-govGold pb-3 mb-4 text-center">
+                    <div class="flex justify-center items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-govNavy text-govGold flex items-center justify-center text-xl font-bold shadow">
+                            <i class="fa-solid fa-shield-halved"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-base font-extrabold text-govNavy uppercase tracking-wider">OFFICE OF THE DEPUTY COMMISSIONER DUKKI</h2>
+                            <p class="text-[11px] font-urdu font-bold text-emerald-800">عارضی پرمٹ برائے نان کسٹم پیڈ (NCP) گاڑی - ضلع دکی</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Permit Main Specs -->
+                <div class="bg-govNavy text-white p-3 rounded-xl mb-4 text-center shadow border border-govGold">
+                    <span class="text-[10px] text-govGold uppercase tracking-widest block font-bold">Temporary Registration Tag Number</span>
+                    <div id="cardRegNumber" class="text-2xl font-mono font-black text-white tracking-widest my-0.5">DC-DKI-TEMP-2026-001</div>
+                    <span id="cardValidityBadge" class="inline-block px-2 py-0.5 bg-emerald-600 text-[10px] font-bold rounded text-white uppercase">STATUS: VALID</span>
+                </div>
+
+                <!-- Details Grid + QR Code Side by Side -->
+                <div class="grid grid-cols-12 gap-3 items-center text-xs border border-gray-300 bg-white p-3 rounded-xl shadow-sm">
+                    <!-- Left: Technical Details -->
+                    <div class="col-span-8 space-y-2 border-r border-gray-200 pr-2">
+                        <div>
+                            <span class="text-[10px] text-gray-500 block uppercase">Vehicle Owner</span>
+                            <span id="cardOwner" class="font-bold text-gray-900 text-sm"></span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <span class="text-[10px] text-gray-500 block uppercase">CNIC #</span>
+                                <span id="cardCnic" class="font-mono text-gray-800"></span>
+                            </div>
+                            <div>
+                                <span class="text-[10px] text-gray-500 block uppercase">Contact #</span>
+                                <span id="cardContact" class="font-mono text-gray-800"></span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <span class="text-[10px] text-gray-500 block uppercase">Make / Model</span>
+                                <span id="cardModel" class="font-semibold text-gray-800"></span>
+                            </div>
+                            <div>
+                                <span class="text-[10px] text-gray-500 block uppercase">Color</span>
+                                <span id="cardColor" class="font-semibold text-gray-800"></span>
+                            </div>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-gray-500 block uppercase">Chassis (VIN) Number</span>
+                            <span id="cardChassis" class="font-mono font-bold text-govNavy"></span>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-gray-500 block uppercase">Engine Number</span>
+                            <span id="cardEngine" class="font-mono text-gray-800"></span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-1 pt-1 border-t text-[10px]">
+                            <div>Issue Date: <span id="cardIssueDate" class="font-semibold"></span></div>
+                            <div>Valid Till: <span id="cardExpiryDate" class="font-semibold text-emerald-700"></span></div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Official QR Code Tag -->
+                    <div class="col-span-4 flex flex-col items-center justify-center p-1 text-center">
+                        <div id="modalQrCode" class="bg-white p-2 rounded-lg border-2 border-govNavy shadow-sm"></div>
+                        <span class="text-[9px] text-gray-500 mt-1 font-mono">Scan to Verify</span>
+                    </div>
+                </div>
+
+                <!-- Warning / Disclaimer -->
+                <div class="mt-4 pt-2 border-t border-gray-300 flex justify-between items-end text-[9px] text-gray-500">
+                    <div class="max-w-[280px]">
+                        <p class="font-bold text-gray-700">Instructions:</p>
+                        <p>1. Display this temporary pass tag on the vehicle's front windshield.</p>
+                        <p>2. Non-transferable. Valid only in District Dukki jurisdiction.</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-16 h-8 border-b border-gray-400 mb-1 mx-auto flex items-end justify-center">
+                            <span class="text-[8px] italic text-govNavy">Stamp & Sig</span>
+                        </div>
+                        <span class="font-bold text-govNavy block">Deputy Commissioner</span>
+                        <span>District Dukki</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // System Data Storage Key
+        const STORAGE_KEY = 'DC_DUKKI_NCP_RECORDS';
+
+        // Global State Variables
+        let vehicleRecords = [];
+        let html5QrCodeScanner = null;
+        let currentActiveRecordId = null;
+
+        // Pre-populated Sample NCP Data for Dukki District
+        const initialDemoData = [
+            {
+                id: 'DC-DKI-TEMP-2026-001',
+                tempRegNumber: 'DC-DKI-TEMP-2026-001',
+                ownerName: 'Muhammad Gul Kakar',
+                fatherName: 'Abdul Rahim',
+                cnicNumber: '54101-1234567-1',
+                mobileNumber: '0333-7812345',
+                dukkiAddress: 'Tehsil Road, Main Bazaar, Dukki',
+                vehicleModel: 'Toyota Hilux Surf 4x4',
+                chassisNumber: 'KZN185-0043912',
+                engineNumber: '1KZ-098231',
+                vehicleColor: 'Pearl White',
+                vehicleType: 'SUV / 4x4 Jeep',
+                issueDate: '2026-01-15',
+                expiryDate: '2027-01-15',
+                status: 'ACTIVE',
+                flagged: false
+            },
+            {
+                id: 'DC-DKI-TEMP-2026-002',
+                tempRegNumber: 'DC-DKI-TEMP-2026-002',
+                ownerName: 'Sardar Jan Luni',
+                fatherName: 'Mir Hazar Khan',
+                cnicNumber: '54101-9876543-3',
+                mobileNumber: '0300-3456789',
+                dukkiAddress: 'Coal Mine Area, Unit 3, Dukki',
+                vehicleModel: 'Toyota Vitz Hatchback',
+                chassisNumber: 'KSP90-2091823',
+                engineNumber: '1KR-981234',
+                vehicleColor: 'Silver Metallic',
+                vehicleType: 'Hatchback',
+                issueDate: '2026-02-01',
+                expiryDate: '2026-08-01',
+                status: 'ACTIVE',
+                flagged: false
+            },
+            {
+                id: 'DC-DKI-TEMP-2026-003',
+                tempRegNumber: 'DC-DKI-TEMP-2026-003',
+                ownerName: 'Bismillah Khan Nasir',
+                fatherName: 'Tor Khan',
+                cnicNumber: '54101-5544332-5',
+                mobileNumber: '0312-9012345',
+                dukkiAddress: 'Luni Road, Near Degree College, Dukki',
+                vehicleModel: 'Isuzu D-Max Single Cabin',
+                chassisNumber: 'TF801-4451290',
+                engineNumber: '4JA1-332190',
+                vehicleColor: 'Dark Blue',
+                vehicleType: 'Single Cabin / Pickup',
+                issueDate: '2025-05-10',
+                expiryDate: '2025-11-10',
+                status: 'EXPIRED',
+                flagged: true
+            }
+        ];
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            loadDatabase();
+            updateClock();
+            setInterval(updateClock, 1000);
+            updateRegSequencePreview();
+            populateDemoPicker();
+        });
+
+        // Live Clock
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('currentDate').textContent = now.toLocaleDateString('en-PK', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+            document.getElementById('currentTime').textContent = now.toLocaleTimeString('en-PK');
+        }
+
+        // Load Records from LocalStorage or Seed Demo Data
+        function loadDatabase() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                try {
+                    vehicleRecords = JSON.parse(stored);
+                } catch(e) {
+                    vehicleRecords = [...initialDemoData];
+                }
+            } else {
+                vehicleRecords = [...initialDemoData];
+                saveDatabase();
+            }
+            updateBadges();
+            renderDatabaseTable();
+            populateDemoPicker();
+        }
+
+        // Save Records to LocalStorage
+        function saveDatabase() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(vehicleRecords));
+            updateBadges();
+        }
+
+        // Update Counter Badges
+        function updateBadges() {
+            document.getElementById('recordCountBadge').textContent = vehicleRecords.length;
+        }
+
+        // Tab Switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-view').forEach(view => view.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-govGold', 'text-govNavy', 'font-bold', 'shadow');
+                btn.classList.add('text-gray-300');
+            });
+
+            const activeView = document.getElementById(`view-${tabName}`);
+            const activeTab = document.getElementById(`tab-${tabName}`);
+
+            if (activeView && activeTab) {
+                activeView.classList.remove('hidden');
+                activeTab.classList.add('bg-govGold', 'text-govNavy', 'font-bold', 'shadow');
+                activeTab.classList.remove('text-gray-300');
+            }
+
+            // Stop camera if leaving scanner
+            if (tabName !== 'scanner' && html5QrCodeScanner) {
+                stopCameraScanner();
+            }
+        }
+
+        // Next Registration Sequence Preview
+        function updateRegSequencePreview() {
+            const count = vehicleRecords.length + 1;
+            const seq = String(count).padStart(3, '0');
+            const nextCode = `DC-DKI-TEMP-2026-${seq}`;
+            document.getElementById('nextRegPreview').textContent = nextCode;
+        }
+
+        // Handle Registration Submit
+        function handleRegistration(event) {
+            event.preventDefault();
+
+            const count = vehicleRecords.length + 1;
+            const seq = String(count).padStart(3, '0');
+            const tempRegNumber = `DC-DKI-TEMP-2026-${seq}`;
+
+            const validityMonths = parseInt(document.getElementById('validityMonths').value);
+            const issueDateObj = new Date();
+            const expiryDateObj = new Date();
+            expiryDateObj.setMonth(expiryDateObj.getMonth() + validityMonths);
+
+            const issueDateStr = issueDateObj.toISOString().split('T')[0];
+            const expiryDateStr = expiryDateObj.toISOString().split('T')[0];
+
+            const newRecord = {
+                id: tempRegNumber,
+                tempRegNumber: tempRegNumber,
+                ownerName: document.getElementById('ownerName').value.trim(),
+                fatherName: document.getElementById('fatherName').value.trim(),
+                cnicNumber: document.getElementById('cnicNumber').value.trim(),
+                mobileNumber: document.getElementById('mobileNumber').value.trim(),
+                dukkiAddress: document.getElementById('dukkiAddress').value.trim(),
+                vehicleModel: document.getElementById('vehicleModel').value.trim(),
+                chassisNumber: document.getElementById('chassisNumber').value.trim().toUpperCase(),
+                engineNumber: document.getElementById('engineNumber').value.trim().toUpperCase(),
+                vehicleColor: document.getElementById('vehicleColor').value.trim(),
+                vehicleType: document.getElementById('vehicleType').value,
+                issueDate: issueDateStr,
+                expiryDate: expiryDateStr,
+                status: 'ACTIVE',
+                flagged: false
+            };
+
+            // Check duplicate Chassis
+            const duplicate = vehicleRecords.find(r => r.chassisNumber === newRecord.chassisNumber);
+            if (duplicate) {
+                alert(`Warning: A vehicle with Chassis Number "${newRecord.chassisNumber}" is already registered under Registration Tag: ${duplicate.tempRegNumber}`);
+                return;
+            }
+
+            vehicleRecords.unshift(newRecord);
+            saveDatabase();
+            updateRegSequencePreview();
+            populateDemoPicker();
+            renderDatabaseTable();
+
+            // Open card modal immediately
+            openPermitModal(newRecord.id);
+
+            // Reset Form
+            resetForm();
+        }
+
+        function resetForm() {
+            document.getElementById('ncpRegistrationForm').reset();
+        }
+
+        // Render Database Table
+        function renderDatabaseTable() {
+            const tbody = document.getElementById('databaseTableBody');
+            const query = document.getElementById('dbSearchInput').value.toLowerCase();
+            const filter = document.getElementById('dbStatusFilter').value;
+            const noRecords = document.getElementById('noRecordsFound');
+
+            tbody.innerHTML = '';
+
+            const filtered = vehicleRecords.filter(rec => {
+                const matchesQuery = 
+                    rec.tempRegNumber.toLowerCase().includes(query) ||
+                    rec.ownerName.toLowerCase().includes(query) ||
+                    rec.cnicNumber.toLowerCase().includes(query) ||
+                    rec.chassisNumber.toLowerCase().includes(query) ||
+                    rec.vehicleModel.toLowerCase().includes(query);
+
+                let matchesStatus = true;
+                if (filter === 'ACTIVE') matchesStatus = (rec.status === 'ACTIVE' && !rec.flagged);
+                if (filter === 'FLAGGED') matchesStatus = rec.flagged;
+                if (filter === 'EXPIRED') matchesStatus = (rec.status === 'EXPIRED');
+
+                return matchesQuery && matchesStatus;
+            });
+
+            if (filtered.length === 0) {
+                noRecords.classList.remove('hidden');
+                return;
+            } else {
+                noRecords.classList.add('hidden');
+            }
+
+            filtered.forEach(rec => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-gray-50 transition border-b border-gray-100';
+
+                // Status Badge styling
+                let statusHtml = `<span class="px-2.5 py-1 text-[11px] font-bold rounded-full bg-emerald-100 text-emerald-800">ACTIVE</span>`;
+                if (rec.flagged) {
+                    statusHtml = `<span class="px-2.5 py-1 text-[11px] font-bold rounded-full bg-amber-100 text-amber-800 flex items-center gap-1 w-max"><i class="fa-solid fa-triangle-exclamation"></i> FLAGGED</span>`;
+                } else if (rec.status === 'EXPIRED') {
+                    statusHtml = `<span class="px-2.5 py-1 text-[11px] font-bold rounded-full bg-rose-100 text-rose-800">EXPIRED</span>`;
+                }
+
+                tr.innerHTML = `
+                    <td class="p-3 font-mono font-bold text-govNavy">${rec.tempRegNumber}</td>
+                    <td class="p-3">
+                        <div class="font-bold text-gray-800">${rec.ownerName}</div>
+                        <div class="text-xs text-gray-500">S/O ${rec.fatherName}</div>
+                    </td>
+                    <td class="p-3 text-xs">
+                        <div class="font-mono text-gray-800">${rec.cnicNumber}</div>
+                        <div class="text-gray-500">${rec.mobileNumber}</div>
+                    </td>
+                    <td class="p-3">
+                        <div class="font-medium text-gray-800">${rec.vehicleModel}</div>
+                        <div class="text-xs text-gray-500">${rec.vehicleColor} | ${rec.vehicleType}</div>
+                    </td>
+                    <td class="p-3 font-mono text-xs">
+                        <div class="text-govNavy font-semibold">C: ${rec.chassisNumber}</div>
+                        <div class="text-gray-500">E: ${rec.engineNumber}</div>
+                    </td>
+                    <td class="p-3 text-xs">
+                        <div>Till: <span class="font-semibold">${rec.expiryDate}</span></div>
+                    </td>
+                    <td class="p-3">${statusHtml}</td>
+                    <td class="p-3 text-right space-x-1">
+                        <button onclick="openPermitModal('${rec.id}')" title="Print Permit Card" class="px-2.5 py-1.5 bg-govNavy text-white rounded hover:bg-slate-800 text-xs">
+                            <i class="fa-solid fa-id-card"></i> Card
+                        </button>
+                        <button onclick="verifyRecordDirect('${rec.id}')" title="Verify Record" class="px-2.5 py-1.5 bg-emerald-700 text-white rounded hover:bg-emerald-800 text-xs">
+                            <i class="fa-solid fa-qrcode"></i>
+                        </button>
+                        <button onclick="deleteRecord('${rec.id}')" title="Revoke Record" class="px-2.5 py-1.5 bg-rose-600 text-white rounded hover:bg-rose-700 text-xs">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Delete / Revoke Record
+        function deleteRecord(id) {
+            if (confirm(`Are you sure you want to revoke and delete record ${id}?`)) {
+                vehicleRecords = vehicleRecords.filter(r => r.id !== id);
+                saveDatabase();
+                renderDatabaseTable();
+                populateDemoPicker();
+            }
+        }
+
+        // Export Functions
+        function exportToCSV() {
+            if (vehicleRecords.length === 0) return alert('No records available to export.');
+            const headers = ["TempRegNumber", "OwnerName", "FatherName", "CNIC", "Mobile", "Address", "MakeModel", "ChassisNumber", "EngineNumber", "Color", "Type", "IssueDate", "ExpiryDate", "Status", "Flagged"];
+            const rows = vehicleRecords.map(r => [
+                `"${r.tempRegNumber}"`, `"${r.ownerName}"`, `"${r.fatherName}"`, `"${r.cnicNumber}"`, `"${r.mobileNumber}"`,
+                `"${r.dukkiAddress}"`, `"${r.vehicleModel}"`, `"${r.chassisNumber}"`, `"${r.engineNumber}"`, `"${r.vehicleColor}"`,
+                `"${r.vehicleType}"`, `"${r.issueDate}"`, `"${r.expiryDate}"`, `"${r.status}"`, `"${r.flagged}"`
+            ]);
+            const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `DC_Dukki_NCP_Records_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function exportToJSON() {
+            if (vehicleRecords.length === 0) return alert('No records available to export.');
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(vehicleRecords, null, 2));
+            const link = document.createElement("a");
+            link.setAttribute("href", dataStr);
+            link.setAttribute("download", `DC_Dukki_NCP_Backup_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // ROADSIDE SCANNER & LOOKUP LOGIC
+        function populateDemoPicker() {
+            const picker = document.getElementById('demoVehiclePicker');
+            picker.innerHTML = '<option value="">-- Choose registered test vehicle --</option>';
+            vehicleRecords.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r.tempRegNumber;
+                opt.textContent = `${r.tempRegNumber} - ${r.vehicleModel} (${r.ownerName})`;
+                picker.appendChild(opt);
+            });
+        }
+
+        function lookupBySelect(val) {
+            if (!val) return;
+            document.getElementById('quickVerifyInput').value = val;
+            performQuickLookup();
+        }
+
+        function verifyRecordDirect(id) {
+            switchTab('scanner');
+            document.getElementById('quickVerifyInput').value = id;
+            performQuickLookup();
+        }
+
+        function performQuickLookup() {
+            const input = document.getElementById('quickVerifyInput').value.trim().toUpperCase();
+            if (!input) return;
+
+            // Search by Reg Number or Chassis Number
+            const record = vehicleRecords.find(r => 
+                r.tempRegNumber.toUpperCase() === input || 
+                r.chassisNumber.toUpperCase() === input ||
+                r.id.toUpperCase() === input
+            );
+
+            displayVerificationResult(record, input);
+        }
+
+        function displayVerificationResult(record, query) {
+            const idleState = document.getElementById('idleState');
+            const resultState = document.getElementById('resultState');
+            const statusBanner = document.getElementById('statusBanner');
+            const statusIcon = document.getElementById('statusIcon');
+            const statusTitle = document.getElementById('statusTitle');
+            const statusBadgeText = document.getElementById('statusBadgeText');
+
+            idleState.classList.add('hidden');
+            resultState.classList.remove('hidden');
+
+            if (!record) {
+                // Not Found / Invalid
+                currentActiveRecordId = null;
+                statusBanner.className = "p-4 rounded-xl flex items-center justify-between text-white shadow bg-rose-600";
+                statusIcon.innerHTML = `<i class="fa-solid fa-xmark text-rose-600"></i>`;
+                statusTitle.textContent = "STATUS: UNREGISTERED / NOT FOUND";
+                statusBadgeText.textContent = "WARNING";
+
+                document.getElementById('resTempReg').textContent = query;
+                document.getElementById('resChassis').textContent = "N/A - Not in Database";
+                document.getElementById('resOwner').textContent = "Unregistered Owner";
+                document.getElementById('resCnic').textContent = "N/A";
+                document.getElementById('resModel').textContent = "Unknown Vehicle";
+                document.getElementById('resEngine').textContent = "N/A";
+                document.getElementById('resAddress').textContent = "District Dukki Checkpost Alert";
+                document.getElementById('resExpiry').textContent = "N/A";
+
+                document.getElementById('flagToggleBtn').classList.add('hidden');
+                return;
+            }
+
+            currentActiveRecordId = record.id;
+            document.getElementById('flagToggleBtn').classList.remove('hidden');
+
+            // Populate fields
+            document.getElementById('resTempReg').textContent = record.tempRegNumber;
+            document.getElementById('resChassis').textContent = record.chassisNumber;
+            document.getElementById('resOwner').textContent = `${record.ownerName} (S/O ${record.fatherName})`;
+            document.getElementById('resCnic').textContent = record.cnicNumber;
+            document.getElementById('resModel').textContent = `${record.vehicleModel} (${record.vehicleColor})`;
+            document.getElementById('resEngine').textContent = record.engineNumber;
+            document.getElementById('resAddress').textContent = record.dukkiAddress;
+            document.getElementById('resExpiry').textContent = record.expiryDate;
+
+            // Check Status Logic
+            const today = new Date().toISOString().split('T')[0];
+            const isExpired = record.expiryDate < today;
+
+            if (record.flagged) {
+                statusBanner.className = "p-4 rounded-xl flex items-center justify-between text-white shadow bg-amber-600";
+                statusIcon.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-600"></i>`;
+                statusTitle.textContent = "STATUS: FLAGGED / VIOLATION";
+                statusBadgeText.textContent = "FLAGGED";
+                document.getElementById('flagToggleBtn').innerHTML = `<i class="fa-solid fa-check"></i> Clear Flag`;
+            } else if (isExpired || record.status === 'EXPIRED') {
+                statusBanner.className = "p-4 rounded-xl flex items-center justify-between text-white shadow bg-rose-600";
+                statusIcon.innerHTML = `<i class="fa-solid fa-clock text-rose-600"></i>`;
+                statusTitle.textContent = "STATUS: EXPIRED PERMIT";
+                statusBadgeText.textContent = "EXPIRED";
+                document.getElementById('flagToggleBtn').innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Mark Flagged`;
+            } else {
+                statusBanner.className = "p-4 rounded-xl flex items-center justify-between text-white shadow bg-govGreen";
+                statusIcon.innerHTML = `<i class="fa-solid fa-check text-govGreen"></i>`;
+                statusTitle.textContent = "STATUS: VERIFIED & VALID";
+                statusBadgeText.textContent = "ACTIVE PASS";
+                document.getElementById('flagToggleBtn').innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Mark Violation / Flag`;
+            }
+        }
+
+        function toggleRecordFlag() {
+            if (!currentActiveRecordId) return;
+            const rec = vehicleRecords.find(r => r.id === currentActiveRecordId);
+            if (rec) {
+                rec.flagged = !rec.flagged;
+                saveDatabase();
+                renderDatabaseTable();
+                displayVerificationResult(rec, rec.tempRegNumber);
+            }
+        }
+
+        // Camera QR Scanner Toggle
+        function toggleCameraScanner() {
+            if (html5QrCodeScanner) {
+                stopCameraScanner();
+            } else {
+                startCameraScanner();
+            }
+        }
+
+        function startCameraScanner() {
+            document.getElementById('cameraBtnLabel').textContent = "Stop Camera";
+            document.getElementById('cameraPlaceholderText')?.classList.add('hidden');
+
+            html5QrCodeScanner = new Html5Qrcode("qrReader");
+            html5QrCodeScanner.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 220, height: 220 } },
+                (decodedText) => {
+                    // On Success Scan
+                    document.getElementById('quickVerifyInput').value = decodedText;
+                    performQuickLookup();
+                    stopCameraScanner();
+                },
+                (errorMessage) => {
+                    // Ignore frame scanning errors
+                }
+            ).catch(err => {
+                alert("Camera access denied or unavailable. Using manual quick lookup mode.");
+                stopCameraScanner();
+            });
+        }
+
+        function stopCameraScanner() {
+            if (html5QrCodeScanner) {
+                html5QrCodeScanner.stop().then(() => {
+                    html5QrCodeScanner.clear();
+                    html5QrCodeScanner = null;
+                    document.getElementById('cameraBtnLabel').textContent = "Start Camera Scan";
+                    document.getElementById('qrReader').innerHTML = `<p id="cameraPlaceholderText" class="text-xs text-gray-400 p-4">Camera feed stopped.<br>Click to start scanner or use quick lookup.</p>`;
+                }).catch(() => {
+                    html5QrCodeScanner = null;
+                });
+            }
+        }
+
+        // PERMIT CARD MODAL LOGIC
+        function openPermitModalCurrent() {
+            if (currentActiveRecordId) {
+                openPermitModal(currentActiveRecordId);
+            }
+        }
+
+        function openPermitModal(recordId) {
+            const record = vehicleRecords.find(r => r.id === recordId);
+            if (!record) return;
+
+            document.getElementById('cardRegNumber').textContent = record.tempRegNumber;
+            document.getElementById('cardOwner').textContent = `${record.ownerName} (S/O ${record.fatherName})`;
+            document.getElementById('cardCnic').textContent = record.cnicNumber;
+            document.getElementById('cardContact').textContent = record.mobileNumber;
+            document.getElementById('cardModel').textContent = record.vehicleModel;
+            document.getElementById('cardColor').textContent = record.vehicleColor;
+            document.getElementById('cardChassis').textContent = record.chassisNumber;
+            document.getElementById('cardEngine').textContent = record.engineNumber;
+            document.getElementById('cardIssueDate').textContent = record.issueDate;
+            document.getElementById('cardExpiryDate').textContent = record.expiryDate;
+
+            const badge = document.getElementById('cardValidityBadge');
+            if (record.flagged) {
+                badge.className = "inline-block px-2 py-0.5 bg-amber-600 text-[10px] font-bold rounded text-white uppercase";
+                badge.textContent = "STATUS: FLAGGED";
+            } else if (record.status === 'EXPIRED') {
+                badge.className = "inline-block px-2 py-0.5 bg-rose-600 text-[10px] font-bold rounded text-white uppercase";
+                badge.textContent = "STATUS: EXPIRED";
+            } else {
+                badge.className = "inline-block px-2 py-0.5 bg-emerald-600 text-[10px] font-bold rounded text-white uppercase";
+                badge.textContent = "STATUS: VALID PASS";
+            }
+
+            // Generate Scannable QR Code in Modal
+            const qrContainer = document.getElementById('modalQrCode');
+            qrContainer.innerHTML = '';
+            new QRCode(qrContainer, {
+                text: record.tempRegNumber,
+                width: 90,
+                height: 90,
+                colorDark: "#0c1b33",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+
+            document.getElementById('permitModal').classList.remove('hidden');
+        }
+
+        function closePermitModal() {
+            document.getElementById('permitModal').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
